@@ -46,7 +46,6 @@ def country_data(alpha3=None, name=None):
         name = df_locations.loc[alpha3]['location']
 
     url = f'https://raw.githubusercontent.com/owid/covid-19-data/master/public/data/vaccinations/country_data/{urllib.parse.quote(name)}.csv'
-    print(url)
     df = pd.read_csv(url, index_col='date')
 
     assert df is not None
