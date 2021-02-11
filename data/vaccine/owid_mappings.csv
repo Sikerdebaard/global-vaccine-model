@@ -1,7 +1,8 @@
 owid,ours
 Sputnik V,gam-covid-vac
 Sinovac,coronavac
-Sinopharm,bbibp-corv
+Sinopharm/Beijing,bbibp-corv
+Sinopharm/Wuhan,bbibp-corv
 Pfizer/BioNTech,comirnaty
 Oxford/AstraZeneca,azd1222
 Moderna,mrna-1273

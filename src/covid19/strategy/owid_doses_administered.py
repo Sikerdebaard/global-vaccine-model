@@ -2,12 +2,15 @@ from covid19.utils.owid import country_vaccines_in_use, owid_vaccine_to_vaccine_
 from covid19.utils.dose_regimen import vaccine_dose_intervals_for_country
 from covid19.utils.country import country_startdate
 from modeling.simpleestimator import estimate_vaccinated_from_doses
+from modeling.plotting.plotmodel import model_to_chart
 
 import pandas as pd
 import numpy as np
 
+from pathlib import Path
 
-def run(alpha3):
+
+def run(alpha3, outdir):
     # vaccination data for country + preprocess the data
     df_country = country_data(alpha3)
     df_country = _preprocess(df_country, alpha3)
@@ -16,7 +19,7 @@ def run(alpha3):
     vaccines_in_use = country_vaccines_in_use(alpha3=alpha3)
 
     # convert OWID vaccine names to vaccine names
-    vaccines_in_use = tuple([owid_vaccine_to_vaccine_name(vacc) for vacc in vaccines_in_use])
+    vaccines_in_use = tuple(set([owid_vaccine_to_vaccine_name(vacc) for vacc in vaccines_in_use]))
 
     df_dose_intervals = vaccine_dose_intervals_for_country(alpha3, vaccines_in_use, df_country.index[0], df_country.index[-1])
 
@@ -36,10 +39,44 @@ def run(alpha3):
 
         df_models['vaccinated', vaccine, 'max'] = vaccinated
         df_models['fully_vaccinated', vaccine, 'max'] = fully_vaccinated
+        df_models['single_dose', vaccine, 'max'] = single_dose
 
     df_models.columns = pd.MultiIndex.from_tuples(df_models.columns)
+    df_aggregated = _aggregate_models_minmax(df_models, df_country, vaccines_in_use)
 
-    return _aggregate_models_minmax(df_models, df_country, vaccines_in_use)
+    df_vaccinated = _combine_models(df_aggregated['vaccinated'].cumsum())
+    df_fully_vaccinated = _combine_models(df_aggregated['fully_vaccinated'].cumsum())
+    #df_single_dose = _combine_models(df_vaccinated - df_fully_vaccinated)
+    df_single_dose = _combine_models(df_aggregated['single_dose'].cumsum())
+
+    df_model = df_vaccinated.rename(columns={
+        'mean': 'vaccinated',
+        'min': 'vaccinated_min',
+        'max': 'vaccinated_max',
+    })
+
+    df_model = df_model.join(df_fully_vaccinated.rename(columns={
+        'mean': 'fully_vaccinated',
+        'min': 'fully_vaccinated_min',
+        'max': 'fully_vaccinated_max',
+    }))
+
+    df_model = df_model.join(df_single_dose.rename(columns={
+        'mean': 'single_dose_vaccinated',
+        'min': 'single_dose_vaccinated_min',
+        'max': 'single_dose_vaccinated_max',
+    }))
+
+    df_model.index.rename('date', inplace=True)
+
+    outdir = Path(outdir)
+    model_csv = outdir / f'{alpha3}.csv'
+    df_model.to_csv(model_csv)
+
+    chart_file_out_path = outdir / f'{alpha3}.png'
+    model_to_chart(df_model, df_country, chart_file_out_path, f'{alpha3}')
+
+    return df_model
 
 def _aggregate_models_minmax(df_model_outputs, df_country, vaccines_in_use):
     df_aggregated = pd.DataFrame(index=df_country.index)
@@ -59,18 +96,18 @@ def _aggregate_models_minmax(df_model_outputs, df_country, vaccines_in_use):
         df_aggregated[dofor, 'min'] = df_minmax['min'].values
         df_aggregated[dofor, 'max'] = df_minmax['max'].values
 
-    #df_aggregated.columns = pd.MultiIndex.from_tuples(df_aggregated.columns)
+    df_aggregated.columns = pd.MultiIndex.from_tuples(df_aggregated.columns)
     return df_aggregated
 
 
-def _model_mean(df_numbers):
+def _combine_models(df_numbers):
     df_out = pd.DataFrame()
     for idx, row in df_numbers.iterrows():
         stats = row.describe()
         for col in stats.index:
             df_out.at[idx, col] = stats[col]
 
-    return df_out
+    return df_out[['min', 'max', 'mean']]
 
 
 def _vaccine_startdate_mask_by_owid_startdate(df_country, vaccines_in_use):
@@ -142,6 +179,7 @@ def _preprocess(df_country, alpha3):
         if not df_country[col].isna().any():
             df_country[col] = df_country[col].astype(int)
 
-    df_country.at[df_country.index[0], 'vaccine'] = df_country.at[df_country.index[1], 'vaccine']
+    #df_country.at[df_country.index[0], 'vaccine'] = df_country.at[df_country.index[1], 'vaccine']
+    df_country['vaccine'] = df_country['vaccine'].ffill().bfill()
 
     return df_country

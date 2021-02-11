@@ -39,8 +39,9 @@ def estimate_vaccinated_from_doses(doses_administered, interval, snoop_intervals
                         num_doses_undistributed = 0
                         break  # exit for loop
                     else:
-                        num_doses_undistributed = vaccinated[j] - vaccinated[j + interval]
-                        fully_vaccinated[j + interval] += vaccinated[j + interval]  # vaccinated[j] - num_doses_undistributed
+                        distributed = vaccinated[j + interval]
+                        num_doses_undistributed = vaccinated[j] - distributed
+                        fully_vaccinated[j + interval] += distributed  # vaccinated[j] - num_doses_undistributed
                         vaccinated[j + interval] = 0
 
             assert num_doses_undistributed == 0, f'Error dose distribution on day {i}, undistributed: {num_doses_undistributed}. Consider increasing snoop_intervals.'
@@ -50,11 +51,11 @@ def estimate_vaccinated_from_doses(doses_administered, interval, snoop_intervals
     if cumulative_output:
         vaccinated = np.cumsum(vaccinated[0:maxlen])
         fully_vaccinated = np.cumsum(fully_vaccinated[0:maxlen])
-        single_dose = vaccinated - fully_vaccinated
+        single_dose = np.abs(vaccinated - fully_vaccinated)
     else:
         vaccinated = np.array(vaccinated[0:maxlen])
         fully_vaccinated = np.array(fully_vaccinated[0:maxlen])
-        single_dose = vaccinated - fully_vaccinated
+        single_dose = np.abs(vaccinated - fully_vaccinated)
 
     snoop_mask = snoop_mask[0:len(vaccinated) - maxinterval]
 

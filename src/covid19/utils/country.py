@@ -96,3 +96,16 @@ def country_alpha3_to_name(alpha3):
 
         if df_country.loc['iso_alpha3']['value'].upper() == alpha3.upper():
             return country.parent.name
+
+
+@lru_cache(maxsize=None)
+def all_countries_alpha3():
+    output = []
+    for country in country_dir.glob('*/metadata.csv'):
+        df_country = pd.read_csv(country, index_col='name')
+
+        assert 'iso_alpha3' in df_country.index
+
+        output.append(df_country.loc['iso_alpha3']['value'])
+
+    return output

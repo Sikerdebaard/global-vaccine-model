@@ -28,7 +28,7 @@ def _y_fmt_human(y, pos):
     return y
 
 
-def _model_to_chart(df_model, df_regionvals, chart_file_out_path, title, subtitle=None, plot_realworld=False, dpi=300):
+def model_to_chart(df_model, df_regionvals, chart_file_out_path, title, subtitle=None, plot_realworld=True, dpi=300):
     ignore = ('min', 'max')
     use_cols = [x for x in df_model.columns if not any([y in x for y in ignore]) and x != 'vaccinated']
 
@@ -119,3 +119,5 @@ def _model_to_chart(df_model, df_regionvals, chart_file_out_path, title, subtitl
     ax.margins(x=0, y=0)
 
     fig.savefig(chart_file_out_path, dpi=dpi)
+
+    plt.close()

@@ -25,6 +25,9 @@ def dose_regimen_for_vaccine(vaccine):
 def vaccine_dose_intervals_for_country(alpha3, vaccines_in_use, start_date, end_date):
     df_regimens = None
     for vaccine in vaccines_in_use:
+        if df_regimens is not None and vaccine in df_regimens.columns:
+            continue  # skip double vaccine mentions, no point in adding it again
+
         default_regimen = dose_regimen_for_vaccine(vaccine)
 
         if default_regimen['doses'] <= 1:
@@ -47,9 +50,13 @@ def vaccine_dose_intervals_for_country(alpha3, vaccines_in_use, start_date, end_
 
         df_regimen = df_regimen.ffill()
 
+
+
         if df_regimens is None:
             df_regimens = df_regimen['interval'].rename(vaccine).to_frame()
+            df_regimens.to_csv('/tmp/last.csv')
         else:
             df_regimens = df_regimens.join(df_regimen['interval'].rename(vaccine))
+            df_regimens.to_csv('/tmp/last.csv')
 
     return df_regimens
