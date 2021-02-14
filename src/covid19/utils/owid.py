@@ -56,6 +56,21 @@ def country_data(alpha3=None, name=None):
 
     return df
 
+@lru_cache(maxsize=None)
+def country_vaccine_startdates(alpha3=None, name=None):
+    df_country_data = country_data(alpha3=alpha3, name=name)
+
+    startdates = {}
+
+    for idx, row in df_country_data.iterrows():
+        vaccstr = row['vaccine']
+        for vaccine in vaccstr.split(','):
+            name = vaccine.strip()
+            if name not in startdates:
+                startdates[name] = idx
+
+
+    return startdates
 
 @lru_cache(maxsize=None)
 def vaccinations_for_country(alpha3=None, name=None):

@@ -20,6 +20,15 @@ def dose_regimen_for_vaccine(vaccine):
 
     return {'doses': doses}
 
+@lru_cache(maxsize=None)
+def is_vaccine_single_dose_regimen_for_country(vaccine):
+    regimen = dose_regimen_for_vaccine(vaccine)
+
+    # TODO: We should probably allow some country-specific parameters to override dose-regimen on specific vaccines
+    # TODO: We should probably allow some country-specific parameters to override dose-regimen on specific vaccines
+    # This should probably be implemented in dose_regimen_for_vaccine and/or vaccine_dose_intervals_for_country as well though
+
+    return regimen['doses'] == 1
 
 @lru_cache(maxsize=None)
 def vaccine_dose_intervals_for_country(alpha3, vaccines_in_use, start_date, end_date):
@@ -46,7 +55,10 @@ def vaccine_dose_intervals_for_country(alpha3, vaccines_in_use, start_date, end_
                 df_regimen.at[idx, 'interval'] = row['interval']
 
         if pd.isna(df_regimen.at[start_date, 'interval']):
-            df_regimen.at[start_date, 'interval'] = default_regimen['interval']
+            default = default_regimen['interval']
+            if '-' not in str(default):
+                default = f'{int(default)-3}-{int(default)+3}'
+            df_regimen.at[start_date, 'interval'] = default
 
         df_regimen = df_regimen.ffill()
 
@@ -54,9 +66,21 @@ def vaccine_dose_intervals_for_country(alpha3, vaccines_in_use, start_date, end_
 
         if df_regimens is None:
             df_regimens = df_regimen['interval'].rename(vaccine).to_frame()
-            df_regimens.to_csv('/tmp/last.csv')
         else:
             df_regimens = df_regimens.join(df_regimen['interval'].rename(vaccine))
-            df_regimens.to_csv('/tmp/last.csv')
 
     return df_regimens
+
+@lru_cache(maxsize=None)
+def minmax_dose_intervals_for_country(alpha3, vaccines_in_use, start_date, end_date):
+    df_regimen = vaccine_dose_intervals_for_country(alpha3=alpha3, vaccines_in_use=vaccines_in_use, start_date=start_date, end_date=end_date)
+
+    df_minmax_regimen = pd.DataFrame(index=df_regimen.index)
+
+    for col in df_regimen.columns:
+        series_min = df_regimen[col].apply(lambda x: int(x.split('-')[0].strip()) if '-' in str(x) else x)
+        series_max = df_regimen[col].apply(lambda x: int(x.split('-')[1].strip()) if '-' in str(x) else x)
+        df_minmax_regimen[f'{col}_min'] = series_min
+        df_minmax_regimen[f'{col}_max'] = series_max
+
+    return df_minmax_regimen
