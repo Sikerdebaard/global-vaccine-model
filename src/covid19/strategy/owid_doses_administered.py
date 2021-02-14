@@ -22,7 +22,7 @@ def strategy_estimated_doses_per_vaccine(alpha3, outdir, df_country=None):
     df_doses_by_vaccine = _estimate_doses_per_vaccine(country_doses_administered_by_vaccine(alpha3=alpha3), df_country, alpha3)
     df_minmax_vaccine_intervals = minmax_dose_intervals_for_country(alpha3, vaccines_in_use, df_country.index[0], df_country.index[-1])
     vaccine_interval_csv = outdir / f'{alpha3}-dose-intervals.csv'
-    df_minmax_vaccine_intervals.to_csv(vaccine_interval_csv)
+    df_minmax_vaccine_intervals.round(0).astype(pd.Int64Dtype()).to_csv(vaccine_interval_csv)
     second_dose_date = first_second_dose_date(alpha3=alpha3)
 
     df_models = pd.DataFrame(index=df_country.index)
@@ -64,7 +64,7 @@ def strategy_estimated_doses_per_vaccine(alpha3, outdir, df_country=None):
 
     df_models.columns = pd.MultiIndex.from_tuples(df_models.columns)
     vaccine_model_csv = outdir / f'{alpha3}-vaccines.csv'
-    df_models.to_csv(vaccine_model_csv)
+    df_models.round(0).astype(pd.Int64Dtype()).to_csv(vaccine_model_csv)
 
     df_aggregated = _sum_models_minmax(df_models)
     df_aggregated.astype(pd.Int64Dtype())
@@ -72,9 +72,6 @@ def strategy_estimated_doses_per_vaccine(alpha3, outdir, df_country=None):
     if second_dose_date is not None:
         idx = df_aggregated[df_aggregated['fully_vaccinated', 'max'].index < second_dose_date].index
         df_aggregated.loc[idx, 'fully_vaccinated'] = 0
-
-        print(df_aggregated)
-
 
     df_vaccinated = _combine_models(df_aggregated['vaccinated'])
     df_fully_vaccinated = _combine_models(df_aggregated['fully_vaccinated'])
@@ -102,7 +99,7 @@ def strategy_estimated_doses_per_vaccine(alpha3, outdir, df_country=None):
 
     outdir = Path(outdir)
     model_csv = outdir / f'{alpha3}.csv'
-    df_model.to_csv(model_csv)
+    df_model.round(0).astype(pd.Int64Dtype()).to_csv(model_csv)
 
     chart_file_out_path = outdir / f'{alpha3}.png'
     model_to_chart(df_model, df_country, chart_file_out_path, f'{alpha3}')
