@@ -2,9 +2,9 @@ from covid19.strategy.owid_doses_administered import strategy_total_doses_only, 
 from covid19.utils.owid import vaccinations_for_country
 
 
-def model_country(country_iso_alpha3, outdir, df_country=None):
+def model_country(country_iso_alpha3, outdir, df_country=None, title=None, subtitle=None):
     strategy = _strategyfactory(country_iso_alpha3)
-    df_model = strategy(country_iso_alpha3, outdir, df_country=df_country)
+    df_model = strategy(country_iso_alpha3, outdir, df_country=df_country, title=title, subtitle=subtitle)
 
     return df_model
 

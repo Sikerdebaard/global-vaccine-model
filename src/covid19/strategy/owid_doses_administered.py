@@ -13,11 +13,14 @@ from pathlib import Path
 def strategy_doses_per_vaccine(alpha3, outdir):
     df_country, vaccines_in_use, df_dose_intervals = _countrydata(alpha3)
 
-def strategy_estimated_doses_per_vaccine(alpha3, outdir, df_country=None):
+def strategy_estimated_doses_per_vaccine(alpha3, outdir, df_country=None, title=None, subtitle=None):
     df_owid_country, vaccines_in_use, df_dose_intervals = _countrydata(alpha3)
 
     if df_country is None:
+        print('Using OWID country data')
         df_country = df_owid_country
+    else:
+        print('Using custom country data')
 
     df_doses_by_vaccine = _estimate_doses_per_vaccine(country_doses_administered_by_vaccine(alpha3=alpha3), df_country, alpha3)
     df_minmax_vaccine_intervals = minmax_dose_intervals_for_country(alpha3, vaccines_in_use, df_country.index[0], df_country.index[-1])
@@ -102,7 +105,11 @@ def strategy_estimated_doses_per_vaccine(alpha3, outdir, df_country=None):
     df_model.round(0).astype(pd.Int64Dtype()).to_csv(model_csv)
 
     chart_file_out_path = outdir / f'{alpha3}.png'
-    model_to_chart(df_model, df_country, chart_file_out_path, f'{alpha3}')
+
+    if title is None:
+        title = f'{alpha3}'
+
+    model_to_chart(df_model, df_country, chart_file_out_path, title=title, subtitle=subtitle)
 
     return df_model
 
