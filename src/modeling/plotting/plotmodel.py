@@ -47,10 +47,10 @@ def model_to_chart(df_model, df_regionvals, chart_file_out_path, title, subtitle
     if plot_realworld:
         realworldcols = []
         legend = ["Total doses administered", "Prediction fully vaccinated", "Prediction single dose vaccinated"]
-        if 'people_vaccinated' in df_regionvals.columns:
+        if 'people_vaccinated' in df_regionvals.columns and df_regionvals['people_vaccinated'].sum() > 0:
             realworldcols.append('people_vaccinated')
             legend.append('people_vaccinated')
-        if 'people_fully_vaccinated' in df_regionvals.columns:
+        if 'people_fully_vaccinated' in df_regionvals.columns  and df_regionvals['people_fully_vaccinated'].sum() > 0:
             realworldcols.append('people_fully_vaccinated')
             legend.append('Real fully vaccinated')
 
@@ -62,7 +62,7 @@ def model_to_chart(df_model, df_regionvals, chart_file_out_path, title, subtitle
 
     df_filter.index = df_filter.index.date
 
-    style = ['-'] * 3
+    style = ['o'] + (['-'] * 2)
     colors = [
         [.6, .6, .6],
         [0, .7, .1],

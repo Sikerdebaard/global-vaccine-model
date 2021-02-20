@@ -14,7 +14,7 @@ def strategy_doses_per_vaccine(alpha3, outdir):
     df_country, vaccines_in_use, df_dose_intervals = _countrydata(alpha3)
 
 def strategy_estimated_doses_per_vaccine(alpha3, outdir, df_country=None, title=None, subtitle=None):
-    df_owid_country, vaccines_in_use, df_dose_intervals = _countrydata(alpha3)
+    df_owid_country, vaccines_in_use, df_dose_intervals, df_country_raw = _countrydata(alpha3)
 
     if df_country is None:
         print('Using OWID country data')
@@ -32,6 +32,7 @@ def strategy_estimated_doses_per_vaccine(alpha3, outdir, df_country=None, title=
     for vaccine in vaccines_in_use:
         if vaccine not in df_doses_by_vaccine.columns:
             # TODO: Throw warning here, skip this vaccine for now
+            print('WARNING: vaccine not found', vaccine, df_doses_by_vaccine.columns)
             continue
 
         if is_vaccine_single_dose_regimen_for_country(vaccine):
@@ -109,7 +110,7 @@ def strategy_estimated_doses_per_vaccine(alpha3, outdir, df_country=None, title=
     if title is None:
         title = f'{alpha3}'
 
-    model_to_chart(df_model, df_country, chart_file_out_path, title=title, subtitle=subtitle)
+    model_to_chart(df_model, df_country_raw, chart_file_out_path, title=title, subtitle=subtitle)
 
     return df_model
 
@@ -139,6 +140,8 @@ def _startdateforvaccine(vaccine, alpha3):
 def _estimate_doses_per_vaccine(df_doses_by_vaccine, df_country, alpha3):
     df_doses_by_vaccine = df_doses_by_vaccine.pivot_table(index='date', values=['cumulative_administered'], columns='vaccine')
     df_doses_by_vaccine.columns = [x[1] for x in df_doses_by_vaccine.columns]
+
+    print(df_doses_by_vaccine)
 
     vaccination_startdate = pd.to_datetime(country_startdate(alpha3=alpha3))  - pd.Timedelta(days=1)
 
@@ -176,10 +179,14 @@ def _estimate_doses_per_vaccine(df_doses_by_vaccine, df_country, alpha3):
         if col == 'sum':
             continue
 
+        print(col)
         df_estimate[col] = df_doses_by_vaccine_pct[col]
-        df_estimate[col] = df_estimate[col].ffill()
+        df_estimate[col] = df_estimate[col].astype(float).ffill()
+
         df_estimate[col] = (df_country['total_vaccinations'] * df_estimate[col]).astype(int)
 
+
+    print(df_estimate)
     return df_estimate
 
 def strategy_total_doses_only(alpha3, outdir):
@@ -242,6 +249,7 @@ def strategy_total_doses_only(alpha3, outdir):
 def _countrydata(alpha3):
     # vaccination data for country + preprocess the data
     df_country = country_data(alpha3)
+    df_country_raw = df_country.copy()
     df_country = _preprocess(df_country, alpha3)
 
     # get the vaccines in use by a specific country as reported by OWID
@@ -253,7 +261,7 @@ def _countrydata(alpha3):
     # dose intervals, customized to country data (if available, else assume defaults)
     df_dose_intervals = minmax_dose_intervals_for_country(alpha3, vaccines_in_use, df_country.index[0], df_country.index[-1])
 
-    return df_country, vaccines_in_use, df_dose_intervals
+    return df_country, vaccines_in_use, df_dose_intervals, df_country_raw
 
 def _aggregate_models_minmax(df_model_outputs, df_country, vaccines_in_use):
     df_aggregated = pd.DataFrame(index=df_country.index)
@@ -347,7 +355,13 @@ def _preprocess(df_country, alpha3):
     intcols = ['total_vaccinations', 'people_vaccinated', 'people_fully_vaccinated']
     for col in intcols:
         if not df_country[col][1:].isna().any():
+            # set to 0 on day before startdate
             df_country.at[zerodate, col] = 0
+
+            # make sure data is cumulative by removing non-cumulative numbers
+            df_diff = df_country[col].diff()
+            for idx in df_diff[df_diff < 0].index:
+                df_country.at[idx, col] = np.nan
 
     # resample to daily interval + linear interpolate + ffill the gaps
     df_country = df_country.asfreq('D')

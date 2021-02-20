@@ -2,6 +2,12 @@ import numpy as np
 
 
 def estimate_vaccinated_from_doses(doses_administered, interval, snoop_intervals=[-5, 5], cumulative_output=True):
+    if any([x < 0 for x in doses_administered]):
+        raise ValueError(f'< 0  error: {doses_administered}')
+
+    if any([x < 0 for x in interval]):
+        raise ValueError(f'< 0  error: {interval}')
+
     if isinstance(interval, list):
         intervals = interval
     else:
@@ -47,6 +53,9 @@ def estimate_vaccinated_from_doses(doses_administered, interval, snoop_intervals
             assert num_doses_undistributed == 0, f'Error dose distribution on day {i}, undistributed: {num_doses_undistributed}. Consider increasing snoop_intervals.'
 
     maxlen = len(vaccinated) - maxinterval
+
+    assert not any(np.array(vaccinated) < 0)
+    assert not any(np.array(fully_vaccinated) < 0)
 
     if cumulative_output:
         vaccinated = np.cumsum(vaccinated[0:maxlen])
