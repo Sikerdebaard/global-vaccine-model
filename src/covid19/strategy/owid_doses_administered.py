@@ -1,6 +1,6 @@
-from covid19.utils.owid import country_vaccines_in_use, owid_vaccine_to_vaccine_name, country_data, country_vaccine_startdates as owid_country_vaccine_startdates
-from covid19.utils.dose_regimen import minmax_dose_intervals_for_country, vaccine_dose_intervals_for_country, is_vaccine_single_dose_regimen_for_country
-from covid19.utils.country import country_startdate, country_doses_administered_by_vaccine, country_vaccine_startdate, first_second_dose_date
+from covid19.utils.owid import country_vaccines_in_use as owid_country_vaccines_in_use, owid_vaccine_to_vaccine_name, country_data, country_vaccine_startdates as owid_country_vaccine_startdates
+from covid19.utils.dose_regimen import minmax_dose_intervals_for_country, is_vaccine_single_dose_regimen_for_country
+from covid19.utils.country import country_startdate, country_doses_administered_by_vaccine, country_vaccine_startdate, first_second_dose_date, country_vaccines_in_use
 from modeling.simpleestimator import estimate_vaccinated_from_doses
 from modeling.plotting.plotmodel import model_to_chart
 
@@ -14,57 +14,63 @@ def strategy_doses_per_vaccine(alpha3, outdir):
     df_country, vaccines_in_use, df_dose_intervals = _countrydata(alpha3)
 
 def strategy_estimated_doses_per_vaccine(alpha3, outdir, df_country=None, title=None, subtitle=None):
-    df_owid_country, vaccines_in_use, df_dose_intervals, df_country_raw = _countrydata(alpha3)
+    df_owid_country, vaccines_in_use, df_minmax_vaccine_intervals, df_country_raw = _countrydata(alpha3)
 
     if df_country is None:
         print('Using OWID country data')
         df_country = df_owid_country
     else:
         print('Using custom country data')
+        df_country_raw = df_country.copy()
 
     df_doses_by_vaccine = _estimate_doses_per_vaccine(country_doses_administered_by_vaccine(alpha3=alpha3), df_country, alpha3)
-    df_minmax_vaccine_intervals = minmax_dose_intervals_for_country(alpha3, vaccines_in_use, df_country.index[0], df_country.index[-1])
+    df_doses_by_vaccine.to_csv(outdir / f'{alpha3}-estimated-doses-administered-by-vaccine.csv')
+
     vaccine_interval_csv = outdir / f'{alpha3}-dose-intervals.csv'
     df_minmax_vaccine_intervals.round(0).astype(pd.Int64Dtype()).to_csv(vaccine_interval_csv)
     second_dose_date = first_second_dose_date(alpha3=alpha3)
 
     df_models = pd.DataFrame(index=df_country.index)
     for vaccine in vaccines_in_use:
-        if vaccine not in df_doses_by_vaccine.columns:
+        vaccine_name = '/'.join(vaccine)
+        if vaccine_name not in df_doses_by_vaccine.columns:
             # TODO: Throw warning here, skip this vaccine for now
             print('WARNING: vaccine not found', vaccine, df_doses_by_vaccine.columns)
             continue
 
-        if is_vaccine_single_dose_regimen_for_country(vaccine):
+        if len(vaccine) == 1 and is_vaccine_single_dose_regimen_for_country(vaccine_name):
             print(f'Single dose {vaccine}')
-            vaccinated = df_doses_by_vaccine[vaccine]
-            fully_vaccinated = df_doses_by_vaccine[vaccine]
-            started_regimen = df_doses_by_vaccine[vaccine]
+            vaccinated = df_doses_by_vaccine[vaccine_name]
+            fully_vaccinated = df_doses_by_vaccine[vaccine_name]
+            started_regimen = df_doses_by_vaccine[vaccine_name]
 
-            df_models['vaccinated', 'min', vaccine] = vaccinated
-            df_models['fully_vaccinated', 'min', vaccine] = fully_vaccinated
-            df_models['started_regimen', 'min', vaccine] = started_regimen
+            df_models['vaccinated', 'min', vaccine_name] = vaccinated
+            df_models['fully_vaccinated', 'min', vaccine_name] = fully_vaccinated
+            df_models['started_regimen', 'min', vaccine_name] = started_regimen
 
-            df_models['vaccinated', 'max', vaccine] = vaccinated
-            df_models['fully_vaccinated', 'max', vaccine] = fully_vaccinated
-            df_models['started_regimen', 'max', vaccine] = started_regimen
+            df_models['vaccinated', 'max', vaccine_name] = vaccinated
+            df_models['fully_vaccinated', 'max', vaccine_name] = fully_vaccinated
+            df_models['started_regimen', 'max', vaccine_name] = started_regimen
         else:
             # doses is cumulative, but we need daily doses administered for our estimator
-            doses = df_doses_by_vaccine[vaccine].diff()
-            doses[0] = 0
+            doses = df_doses_by_vaccine[vaccine_name]
 
-            intervals_min = list(df_minmax_vaccine_intervals[f'{vaccine}_min'].values)
-            intervals_max = list(df_minmax_vaccine_intervals[f'{vaccine}_max'].values)
+            intervals_min = list(df_minmax_vaccine_intervals[f'{vaccine_name}_min'].values)
+            intervals_max = list(df_minmax_vaccine_intervals[f'{vaccine_name}_max'].values)
+            print(vaccine_name)
+            print(intervals_min)
+            print(intervals_max)
+            print('ASD')
 
             vaccinated, fully_vaccinated, started_regimen, _ = estimate_vaccinated_from_doses(doses, interval=intervals_min, cumulative_output=True)
-            df_models['vaccinated', 'min', vaccine] = vaccinated
-            df_models['fully_vaccinated', 'max', vaccine] = fully_vaccinated
-            df_models['started_regimen', 'min', vaccine] = started_regimen
+            df_models['vaccinated', 'min', vaccine_name] = vaccinated
+            df_models['fully_vaccinated', 'max', vaccine_name] = fully_vaccinated
+            df_models['started_regimen', 'min', vaccine_name] = started_regimen
 
             vaccinated, fully_vaccinated, started_regimen, _ = estimate_vaccinated_from_doses(doses, interval=intervals_max, cumulative_output=True)
-            df_models['vaccinated', 'max', vaccine] = vaccinated
-            df_models['fully_vaccinated', 'min', vaccine] = fully_vaccinated
-            df_models['started_regimen', 'max', vaccine] = started_regimen
+            df_models['vaccinated', 'max', vaccine_name] = vaccinated
+            df_models['fully_vaccinated', 'min', vaccine_name] = fully_vaccinated
+            df_models['started_regimen', 'max', vaccine_name] = started_regimen
 
     df_models.columns = pd.MultiIndex.from_tuples(df_models.columns)
     vaccine_model_csv = outdir / f'{alpha3}-vaccines.csv'
@@ -133,15 +139,15 @@ def _startdateforvaccine(vaccine, alpha3):
     vaccine_startdates = owid_country_vaccine_startdates(alpha3=alpha3)
 
     for owid_vaccine, startdate  in vaccine_startdates.items():
-        vaccine_name = owid_vaccine_to_vaccine_name(owid_vaccine)
+        vaccine_name = '/'.join([owid_vaccine_to_vaccine_name(x) for x in owid_vaccine])
         if vaccine_name == vaccine:
             return startdate
+
+    return None
 
 def _estimate_doses_per_vaccine(df_doses_by_vaccine, df_country, alpha3):
     df_doses_by_vaccine = df_doses_by_vaccine.pivot_table(index='date', values=['cumulative_administered'], columns='vaccine')
     df_doses_by_vaccine.columns = [x[1] for x in df_doses_by_vaccine.columns]
-
-    print(df_doses_by_vaccine)
 
     vaccination_startdate = pd.to_datetime(country_startdate(alpha3=alpha3))  - pd.Timedelta(days=1)
 
@@ -153,6 +159,7 @@ def _estimate_doses_per_vaccine(df_doses_by_vaccine, df_country, alpha3):
 
     for col in df_doses_by_vaccine.columns:
         startdate = pd.to_datetime(_startdateforvaccine(col, alpha3)) - pd.Timedelta(days=1)
+        assert startdate is not None
         df_doses_by_vaccine.at[startdate, col] = 0
 
     df_doses_by_vaccine.sort_index(inplace=True)
@@ -175,18 +182,18 @@ def _estimate_doses_per_vaccine(df_doses_by_vaccine, df_country, alpha3):
     df_doses_by_vaccine_pct.at[df_doses_by_vaccine_pct.index[0], 'sum'] = 1.0
 
     df_estimate = pd.DataFrame(index=df_country.index)
+    df_diff = df_country['total_vaccinations'].diff()
+    df_diff.iloc[0] = df_country.iloc[0]['total_vaccinations']
     for col in df_doses_by_vaccine_pct.columns:
         if col == 'sum':
             continue
 
-        print(col)
         df_estimate[col] = df_doses_by_vaccine_pct[col]
         df_estimate[col] = df_estimate[col].astype(float).ffill()
 
-        df_estimate[col] = (df_country['total_vaccinations'] * df_estimate[col]).astype(int)
+        df_estimate[col] = (df_diff * df_estimate[col]).astype(int)
 
 
-    print(df_estimate)
     return df_estimate
 
 def strategy_total_doses_only(alpha3, outdir):
@@ -252,13 +259,24 @@ def _countrydata(alpha3):
     df_country_raw = df_country.copy()
     df_country = _preprocess(df_country, alpha3)
 
-    # get the vaccines in use by a specific country as reported by OWID
+    # first see if the country has specific data on vaccines in use
+    # this data is usually more granular
     vaccines_in_use = country_vaccines_in_use(alpha3=alpha3)
 
-    # convert OWID vaccine names to vaccine names
-    vaccines_in_use = tuple(set([owid_vaccine_to_vaccine_name(vacc) for vacc in vaccines_in_use]))
 
-    # dose intervals, customized to country data (if available, else assume defaults)
+    if vaccines_in_use is None:
+        # if true get the vaccines in use by a specific country as reported by OWID
+        # this data is usually more coarse but still usable
+        vaccines_in_use = owid_country_vaccines_in_use(alpha3=alpha3)
+
+        # convert OWID vaccine names to vaccine names
+        vaccines_in_use_tmp = []
+        for compounded_vaccine in vaccines_in_use:
+            compounded = tuple([owid_vaccine_to_vaccine_name(vacc) for vacc in compounded_vaccine])  # make sure the list is converted to an immutable tuple
+            vaccines_in_use_tmp.append(compounded)
+        vaccines_in_use = tuple(vaccines_in_use_tmp)  # make sure the list is converted to an immutable tuple
+
+    # dose intervals, customized to country data (if available, else assume manufacturers defaults)
     df_dose_intervals = minmax_dose_intervals_for_country(alpha3, vaccines_in_use, df_country.index[0], df_country.index[-1])
 
     return df_country, vaccines_in_use, df_dose_intervals, df_country_raw

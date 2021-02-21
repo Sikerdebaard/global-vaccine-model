@@ -6,6 +6,15 @@ from pathlib import Path
 country_dir = Path('data') / 'locations'
 
 @lru_cache(maxsize=None)
+def country_vaccines_in_use(alpha3=None, country_name=None):
+    df_doses_by_vaccine = country_doses_administered_by_vaccine(alpha3=alpha3, country_name=country_name)
+
+    if df_doses_by_vaccine is None:
+        return None
+
+    return tuple([tuple(x.split('/')) for x in df_doses_by_vaccine['vaccine'].unique()])
+
+@lru_cache(maxsize=None)
 def country_doses_administered_by_vaccine(alpha3=None, country_name=None):
     assert alpha3 is not None or country_name is not None
     if not country_name:
@@ -48,8 +57,6 @@ def country_vaccine_startdate(vaccine, alpha3=None, country_name=None):
     key = f'start_{vaccine}'
     if key in df_meta.index:
         return df_meta.loc[key]['value']
-
-    return None
 
 @lru_cache(maxsize=None)
 def country_startdate(alpha3=None, country_name=None):

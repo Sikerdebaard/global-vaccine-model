@@ -33,43 +33,54 @@ def is_vaccine_single_dose_regimen_for_country(vaccine):
 @lru_cache(maxsize=None)
 def vaccine_dose_intervals_for_country(alpha3, vaccines_in_use, start_date, end_date):
     df_regimens = None
-    for vaccine in vaccines_in_use:
-        if df_regimens is not None and vaccine in df_regimens.columns:
+    for compounded_vaccine in vaccines_in_use:
+        if df_regimens is not None and compounded_vaccine in df_regimens.columns:
             continue  # skip double vaccine mentions, no point in adding it again
 
-        default_regimen = dose_regimen_for_vaccine(vaccine)
+        df_compounded = pd.DataFrame(columns=['interval'])
 
-        if default_regimen['doses'] <= 1:
-            continue
+        for vaccine in compounded_vaccine:
+            default_regimen = dose_regimen_for_vaccine(vaccine)
 
-        start_date = pd.to_datetime(start_date)
-        end_date = pd.to_datetime(end_date)
+            if default_regimen['doses'] <= 1:
+                continue
 
-        df_regimen = pd.DataFrame(columns=['interval'], index=pd.date_range(start_date, end_date))
+            start_date = pd.to_datetime(start_date)
+            end_date = pd.to_datetime(end_date)
 
-        df_country_regimen = country_vaccine_regimen(alpha3=alpha3)
+            df_regimen = pd.DataFrame(columns=['interval'], index=pd.date_range(start_date, end_date))
 
-        if df_country_regimen is not None:
-            df_country_regimen = df_country_regimen[df_country_regimen['vaccine'] == vaccine]
-            for idx, row in df_country_regimen.iterrows():
-                df_regimen.at[idx, 'interval'] = row['interval']
+            df_country_regimen = country_vaccine_regimen(alpha3=alpha3)
 
-        if pd.isna(df_regimen.at[start_date, 'interval']):
-            default = default_regimen['interval']
-            if '-' not in str(default):
-                default = f'{int(default)-3}-{int(default)+3}'
-            df_regimen.at[start_date, 'interval'] = default
+            if df_country_regimen is not None:
+                df_country_regimen = df_country_regimen[df_country_regimen['vaccine'] == vaccine]
+                for idx, row in df_country_regimen.iterrows():
+                    df_regimen.at[idx, 'interval'] = row['interval']
 
-        df_regimen = df_regimen.ffill()
+            if pd.isna(df_regimen.at[start_date, 'interval']):
+                default = default_regimen['interval']
+                if '-' not in str(default):
+                    default = f'{int(default)-3}-{int(default)+3}'
+                df_regimen.at[start_date, 'interval'] = default
 
+            df_regimen = df_regimen.ffill()
 
+            for idx, row in df_regimen.iterrows():
+                if idx not in df_compounded.index:
+                    df_compounded.at[idx, 'interval'] = row['interval']
+                else:
+                    intervals = [int(x) for x in row['interval'].split('-')] + [int(x) for x in df_compounded.at[idx, 'interval'].split('-')]
+                    df_compounded.at[idx, 'interval'] = f'{min(intervals)}-{max(intervals)}'
 
+        compounded_vaccine_name = '/'.join(compounded_vaccine)
         if df_regimens is None:
-            df_regimens = df_regimen['interval'].rename(vaccine).to_frame()
+            df_regimens = df_compounded['interval'].rename(compounded_vaccine_name).to_frame()
         else:
-            df_regimens = df_regimens.join(df_regimen['interval'].rename(vaccine))
+            for idx, row in df_compounded.iterrows():
+                #df_regimens = df_regimens.join(df_compounded['interval'].rename(compounded_vaccine_name))
+                df_regimens.at[idx, compounded_vaccine_name] = df_compounded.at[idx, 'interval']
 
-    return df_regimens
+    return df_regimens.sort_index()
 
 @lru_cache(maxsize=None)
 def minmax_dose_intervals_for_country(alpha3, vaccines_in_use, start_date, end_date):

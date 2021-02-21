@@ -31,11 +31,13 @@ def country_vaccines_in_use(*args, **kwargs):
 
     vaccines = set()
     for vaccstr in df_country_data['vaccine'].unique():
+        compounded_vaccine = []
         for vaccine in vaccstr.split(','):
-            vaccines.add(vaccine.strip())
+            compounded_vaccine.append(vaccine.strip())
+        vaccines.add(tuple(compounded_vaccine))
 
-    return vaccines
-
+    # return vaccines
+    return tuple(vaccines)
 
 @lru_cache(maxsize=None)
 def country_data(alpha3=None, name=None):
@@ -64,10 +66,9 @@ def country_vaccine_startdates(alpha3=None, name=None):
 
     for idx, row in df_country_data.iterrows():
         vaccstr = row['vaccine']
-        for vaccine in vaccstr.split(','):
-            name = vaccine.strip()
-            if name not in startdates:
-                startdates[name] = idx
+        name = tuple([x.strip() for x in vaccstr.split(',')])
+        if name not in startdates:
+            startdates[name] = idx
 
 
     return startdates
