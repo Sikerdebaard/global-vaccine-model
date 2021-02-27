@@ -1,3 +1,5 @@
 date,vaccine,interval,comment
 2021-01-20,comirnaty,19-42,transfer period as unknown number of appointments are made before jan 20th. https://lci.rivm.nl/richtlijnen/covid-19-vaccinatie#5-specifieke-informatie-per-vaccin
 2021-02-06,comirnaty,35-42,https://lci.rivm.nl/richtlijnen/covid-19-vaccinatie#5-specifieke-informatie-per-vaccin
+2021-01-20,mrna-1273,25-35,https://lci.rivm.nl/richtlijnen/covid-19-vaccinatie#5-specifieke-informatie-per-vaccin
+2021-01-20,azd1222,84,https://lci.rivm.nl/richtlijnen/covid-19-vaccinatie#5-specifieke-informatie-per-vaccin

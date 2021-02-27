@@ -3,6 +3,7 @@ date_first_dose_administered,2021-01-06,https://nos.nl/artikel/2363218-eerste-va
 date_first_second_dose_administered,2021-01-26,
 iso_alpha3,NLD,https://www.iso.org/obp/ui/#iso:code:3166:NL
 start_comirnaty,2021-01-05,
-start_azd1222,2021-02-12,https://www.rivm.nl/nieuws/eerste-zorgmedewerkers-vrijdag-gevaccineerd-met-astrazeneca
+start_azd1222,2021-02-15,https://www.rivm.nl/covid-19-vaccinatie/cijfers-vaccinatieprogramma
 start_mrna-1273,2021-01-25,https://www.rijksoverheid.nl/onderwerpen/coronavirus-vaccinatie/soorten-coronavaccins/moderna
-start_comirnaty/azd1222,2021-02-08,
+start_comirnaty/azd1222,2021-02-06,https://www.rivm.nl/covid-19-vaccinatie/cijfers-vaccinatieprogramma
+start_mrna-1273/comirnaty,2021-01-25,https://www.rivm.nl/covid-19-vaccinatie/cijfers-vaccinatieprogramma

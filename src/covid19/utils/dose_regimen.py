@@ -57,10 +57,18 @@ def vaccine_dose_intervals_for_country(alpha3, vaccines_in_use, start_date, end_
                 for idx, row in df_country_regimen.iterrows():
                     df_regimen.at[idx, 'interval'] = row['interval']
 
+            # for idx, row in df_regimen.iterrows():
+            #     if not pd.isna(df_regimen.at[idx, 'interval']):
+            #         vals = df_regimen.at[idx, 'interval']
+            #         if '-' in str(vals):
+            #             vals = str(vals).split('-')
+            #             df_regimen.at[idx, 'interval'] = f'{int(vals[0])-1}-{int(vals[1])+1}'
+
             if pd.isna(df_regimen.at[start_date, 'interval']):
                 default = default_regimen['interval']
                 if '-' not in str(default):
                     default = f'{int(default)-3}-{int(default)+3}'
+
                 df_regimen.at[start_date, 'interval'] = default
 
             df_regimen = df_regimen.ffill()
@@ -94,4 +102,4 @@ def minmax_dose_intervals_for_country(alpha3, vaccines_in_use, start_date, end_d
         df_minmax_regimen[f'{col}_min'] = series_min
         df_minmax_regimen[f'{col}_max'] = series_max
 
-    return df_minmax_regimen
+    return df_minmax_regimen.astype(int)

@@ -155,31 +155,39 @@ def _estimate_doses_per_vaccine(df_doses_by_vaccine, df_country, alpha3):
         df_doses_by_vaccine.loc[vaccination_startdate] = 0
         df_doses_by_vaccine.sort_index(inplace=True)
 
-    df_doses_by_vaccine = df_doses_by_vaccine.asfreq('D')
+    df_doses_by_vaccine = df_doses_by_vaccine.fillna(0)
 
-    for col in df_doses_by_vaccine.columns:
-        startdate = pd.to_datetime(_startdateforvaccine(col, alpha3)) - pd.Timedelta(days=1)
-        assert startdate is not None
-        df_doses_by_vaccine.at[startdate, col] = 0
+    df_doses_by_vaccine_pct = df_doses_by_vaccine.apply(lambda x: x / df_doses_by_vaccine.sum(axis=1))
 
-    df_doses_by_vaccine.sort_index(inplace=True)
+    df_doses_by_vaccine_pct = df_doses_by_vaccine_pct.asfreq('D').bfill()
 
-    df_doses_by_vaccine = df_doses_by_vaccine.interpolate('linear').ffill().round(0).astype(pd.Int64Dtype())
-
-    df_doses_by_vaccine['sum'] = df_doses_by_vaccine.sum(axis=1).astype(int)
-
-    df_doses_by_vaccine_pct = df_doses_by_vaccine.copy()
-    for col in df_doses_by_vaccine_pct.columns:
-        if col == 'sum':
-            continue
-
-        df_doses_by_vaccine_pct[col] = df_doses_by_vaccine_pct[col] / df_doses_by_vaccine_pct['sum']
-
-    df_doses_by_vaccine_pct.drop(columns=['sum'], inplace=True)
-    df_doses_by_vaccine_pct['sum'] = df_doses_by_vaccine_pct.sum(axis=1)
-
-    df_doses_by_vaccine_pct.loc[df_doses_by_vaccine_pct.index[0]] = 0
-    df_doses_by_vaccine_pct.at[df_doses_by_vaccine_pct.index[0], 'sum'] = 1.0
+    # df_doses_by_vaccine = df_doses_by_vaccine.asfreq('D')
+    #
+    # for col in df_doses_by_vaccine.columns:
+    #     startdate = pd.to_datetime(_startdateforvaccine(col, alpha3)) - pd.Timedelta(days=1)
+    #     assert startdate is not None
+    #     print(col, startdate)
+    #     df_doses_by_vaccine.at[startdate, col] = 0
+    #
+    # df_doses_by_vaccine.sort_index(inplace=True)
+    #
+    # df_doses_by_vaccine.to_csv('/tmp/DEBUG-DOSES-BY-VACCINE.csv')
+    # df_doses_by_vaccine = df_doses_by_vaccine.interpolate('linear').ffill().round(0).astype(pd.Int64Dtype())
+    #
+    # df_doses_by_vaccine['sum'] = df_doses_by_vaccine.sum(axis=1).astype(int)
+    #
+    # df_doses_by_vaccine_pct = df_doses_by_vaccine.copy()
+    # for col in df_doses_by_vaccine_pct.columns:
+    #     if col == 'sum':
+    #         continue
+    #
+    #     df_doses_by_vaccine_pct[col] = df_doses_by_vaccine_pct[col] / df_doses_by_vaccine_pct['sum']
+    #
+    # df_doses_by_vaccine_pct.drop(columns=['sum'], inplace=True)
+    # df_doses_by_vaccine_pct['sum'] = df_doses_by_vaccine_pct.sum(axis=1)
+    #
+    # df_doses_by_vaccine_pct.loc[df_doses_by_vaccine_pct.index[0]] = 0
+    # df_doses_by_vaccine_pct.at[df_doses_by_vaccine_pct.index[0], 'sum'] = 1.0
 
     df_estimate = pd.DataFrame(index=df_country.index)
     df_diff = df_country['total_vaccinations'].diff()
@@ -192,7 +200,6 @@ def _estimate_doses_per_vaccine(df_doses_by_vaccine, df_country, alpha3):
         df_estimate[col] = df_estimate[col].astype(float).ffill()
 
         df_estimate[col] = (df_diff * df_estimate[col]).astype(int)
-
 
     return df_estimate
 
