@@ -9,8 +9,8 @@ if sys.version_info < (3, 6):
 
 
 setup(
-    name='covid19-vaccination-model',
-    version='1.0.1',
+    name='scov19_vaccination_modeling',
+    version='1.0.2',
     description='Estimates the vaccination rollout for the COVID-19 vaccines',
     #long_description=long_description,
     #long_description_content_type="text/markdown",
@@ -28,6 +28,7 @@ setup(
     ],
     entry_points={
         'console_scripts': [
+            'covid-19-projection=cli.project_doses:cli',
             'covid-19-model-single-country=cli.model_country:cli',
             'covid-19-model-all-countries=cli.model_all_countries:cli',
             'covid-19-add-missing-countries=cli.add_missing_countries:cli',

@@ -10,8 +10,122 @@ import numpy as np
 from pathlib import Path
 
 
-def strategy_doses_per_vaccine(alpha3, outdir):
-    df_country, vaccines_in_use, df_dose_intervals = _countrydata(alpha3)
+def strategy_doses_per_vaccine(alpha3, outdir, df_country=None, df_doses_by_vaccine=None, title=None, subtitle=None):
+    df_owid_country, vaccines_in_use, df_minmax_vaccine_intervals, df_country_raw = _countrydata(alpha3)
+
+    if df_country is None:
+        print('Using OWID country data')
+        df_country = df_owid_country
+    else:
+        print('Using custom country data')
+        df_country_raw = df_country.copy()
+
+    vaccine_interval_csv = outdir / f'{alpha3}-dose-intervals.csv'
+    df_minmax_vaccine_intervals.round(0).astype(pd.Int64Dtype()).to_csv(vaccine_interval_csv)
+
+    df_minmax_vaccine_intervals.loc[df_country.index[-1]] = None
+    df_minmax_vaccine_intervals.loc[df_country.index[0]] = None
+    df_minmax_vaccine_intervals.sort_index(inplace=True)
+    df_minmax_vaccine_intervals = df_minmax_vaccine_intervals.resample('D').ffill().ffill().bfill().astype(int)
+
+    from pprint import pprint
+    pprint(df_minmax_vaccine_intervals)
+
+    second_dose_date = first_second_dose_date(alpha3=alpha3)
+
+    df_models = pd.DataFrame(index=df_country.index)
+    for vaccine in vaccines_in_use:
+        vaccine_name = '/'.join(vaccine)
+        if vaccine_name not in df_doses_by_vaccine.columns:
+            # TODO: Throw warning here, skip this vaccine for now
+            print('WARNING: vaccine not found', vaccine, df_doses_by_vaccine.columns)
+            continue
+
+        if len(vaccine) == 1 and is_vaccine_single_dose_regimen_for_country(vaccine_name):
+            print(f'Single dose {vaccine}')
+            vaccinated = df_doses_by_vaccine[vaccine_name].cumsum().values
+            fully_vaccinated = df_doses_by_vaccine[vaccine_name].cumsum().values
+            started_regimen = [0] * df_doses_by_vaccine[vaccine_name].shape[0]
+
+            df_models['vaccinated', 'min', vaccine_name] = vaccinated
+            df_models['fully_vaccinated', 'min', vaccine_name] = fully_vaccinated
+            df_models['started_regimen', 'min', vaccine_name] = started_regimen
+
+            df_models['vaccinated', 'max', vaccine_name] = vaccinated
+            df_models['fully_vaccinated', 'max', vaccine_name] = fully_vaccinated
+            df_models['started_regimen', 'max', vaccine_name] = started_regimen
+        else:
+            # doses is cumulative, but we need daily doses administered for our estimator
+            doses = df_doses_by_vaccine[vaccine_name]
+
+            intervals_min = list(df_minmax_vaccine_intervals[f'{vaccine_name}_min'].values)
+            intervals_max = list(df_minmax_vaccine_intervals[f'{vaccine_name}_max'].values)
+            print(vaccine_name)
+            print(intervals_min)
+            print(intervals_max)
+            print('ASD')
+
+            print(len(intervals_min), len(doses))
+
+            vaccinated, fully_vaccinated, started_regimen, _ = estimate_vaccinated_from_doses(doses, interval=intervals_min, cumulative_output=True)
+            df_models['vaccinated', 'min', vaccine_name] = vaccinated
+            df_models['fully_vaccinated', 'max', vaccine_name] = fully_vaccinated
+            df_models['started_regimen', 'min', vaccine_name] = started_regimen
+
+            vaccinated, fully_vaccinated, started_regimen, _ = estimate_vaccinated_from_doses(doses, interval=intervals_max, cumulative_output=True)
+            df_models['vaccinated', 'max', vaccine_name] = vaccinated
+            df_models['fully_vaccinated', 'min', vaccine_name] = fully_vaccinated
+            df_models['started_regimen', 'max', vaccine_name] = started_regimen
+
+    df_models.columns = pd.MultiIndex.from_tuples(df_models.columns)
+    vaccine_model_csv = outdir / f'{alpha3}-vaccines.csv'
+    df_models.round(0).astype(pd.Int64Dtype()).to_csv(vaccine_model_csv)
+
+    df_aggregated = _sum_models_minmax(df_models)
+    df_aggregated.astype(pd.Int64Dtype())
+
+    if second_dose_date is not None:
+        idx = df_aggregated[df_aggregated['fully_vaccinated', 'max'].index < second_dose_date].index
+        df_aggregated.loc[idx, 'fully_vaccinated'] = 0
+
+    df_vaccinated = _combine_models(df_aggregated['vaccinated'])
+    df_fully_vaccinated = _combine_models(df_aggregated['fully_vaccinated'])
+    df_started_regimen = _combine_models(df_aggregated['started_regimen'])
+
+    df_model = df_vaccinated.rename(columns={
+        'mean': 'vaccinated',
+        'min': 'vaccinated_min',
+        'max': 'vaccinated_max',
+    })
+
+    df_model = df_model.join(df_fully_vaccinated.rename(columns={
+        'mean': 'fully_vaccinated',
+        'min': 'fully_vaccinated_min',
+        'max': 'fully_vaccinated_max',
+    }))
+
+    df_model = df_model.join(df_started_regimen.rename(columns={
+        'mean': 'single_dose_vaccinated',
+        'min': 'single_dose_vaccinated_min',
+        'max': 'single_dose_vaccinated_max',
+    }))
+
+    df_model.index.rename('date', inplace=True)
+
+    df_model = df_model[df_model['fully_vaccinated'] < 17_400_000]
+
+    outdir = Path(outdir)
+    model_csv = outdir / f'{alpha3}.csv'
+    df_model.round(0).astype(pd.Int64Dtype()).to_csv(model_csv)
+
+    chart_file_out_path = outdir / f'{alpha3}.png'
+
+    if title is None:
+        title = f'{alpha3}'
+
+    model_to_chart(df_model, df_country_raw, chart_file_out_path, title=title, subtitle=subtitle)
+
+    return df_model
 
 def strategy_estimated_doses_per_vaccine(alpha3, outdir, df_country=None, title=None, subtitle=None):
     df_owid_country, vaccines_in_use, df_minmax_vaccine_intervals, df_country_raw = _countrydata(alpha3)
