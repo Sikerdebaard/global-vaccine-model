@@ -16,12 +16,16 @@ def estimate_vaccinated_from_doses(doses_administered, interval, snoop_intervals
     # add 1 because the interval excludes the day when the shot was given
     intervals = [x+1 for x in intervals]
 
-    maxinterval = max(intervals) + 1
+    maxinterval = max(intervals) + 2
+    print(maxinterval)
+    print(len(intervals))
 
     vaccinated = list(doses_administered)
     vaccinated = vaccinated + ([9_999_999_999_999] * maxinterval)
     fully_vaccinated = [0] * len(vaccinated)
     snoop_mask = [False] * len(vaccinated)
+
+    print(len(vaccinated) - maxinterval)
 
     for i in range(0, len(vaccinated) - maxinterval):
         interval = intervals[i]

@@ -128,7 +128,7 @@ def strategy_doses_per_vaccine(alpha3, outdir, df_country=None, df_doses_by_vacc
     return df_model
 
 def strategy_estimated_doses_per_vaccine(alpha3, outdir, df_country=None, title=None, subtitle=None):
-    df_owid_country, vaccines_in_use, df_minmax_vaccine_intervals, df_country_raw = _countrydata(alpha3)
+    df_owid_country, vaccines_in_use, df_minmax_vaccine_intervals, df_country_raw = _countrydata(alpha3, df_country)
 
     if df_country is None:
         print('Using OWID country data')
@@ -374,11 +374,17 @@ def strategy_total_doses_only(alpha3, outdir):
 
     return df_model
 
-def _countrydata(alpha3):
+def _countrydata(alpha3, df_country=None):
     # vaccination data for country + preprocess the data
-    df_country = country_data(alpha3)
+
+    preprocess = False
+    if df_country is None:
+        df_country = country_data(alpha3)
+        preprocess = True
     df_country_raw = df_country.copy()
-    df_country = _preprocess(df_country, alpha3)
+
+    if preprocess:
+        df_country = _preprocess(df_country, alpha3)
 
     # first see if the country has specific data on vaccines in use
     # this data is usually more granular
