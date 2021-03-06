@@ -1,6 +1,7 @@
 date,vaccine,cumulative_administered
 2021-02-28,azd1222,63002
-2021-02-28,comirnaty,710204
+2021-02-28,comirnaty,460739
 2021-02-28,comirnaty/azd1222,490475
+2021-02-28,comirnaty/mrna-1273/azd1222,249465
 2021-02-28,mrna-1273,17300
 2021-02-28,mrna-1273/comirnaty,55447
