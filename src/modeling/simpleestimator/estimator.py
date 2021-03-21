@@ -1,7 +1,7 @@
 import numpy as np
 
 
-def estimate_vaccinated_from_doses(doses_administered, interval, snoop_intervals=[-5, 5], cumulative_output=True):
+def estimate_vaccinated_from_doses(doses_administered, interval, snoop_intervals=[-14, 14], cumulative_output=True):
     if any([x < 0 for x in doses_administered]):
         raise ValueError(f'< 0  error: {doses_administered}')
 
@@ -32,10 +32,15 @@ def estimate_vaccinated_from_doses(doses_administered, interval, snoop_intervals
         if vaccinated[i + interval] >= vaccinated[i]:
             vaccinated[i + interval] = vaccinated[i + interval] - vaccinated[i]
             fully_vaccinated[i + interval] += vaccinated[i]
+            assert fully_vaccinated[i + interval] >= 0
         else:  # snoop from surrounding days
             snoop_mask[i] = True
+            assert vaccinated[i] >= 0
+            assert vaccinated[i + interval] >= 0
             num_doses_undistributed = vaccinated[i] - vaccinated[i + interval]
+            assert num_doses_undistributed >= 0
             fully_vaccinated[i + interval] += vaccinated[i] - num_doses_undistributed
+            assert fully_vaccinated[i + interval] >= 0
             vaccinated[i + interval] = 0
             for sinterval in snoop_intervals:
                 if sinterval < 0:
@@ -46,12 +51,17 @@ def estimate_vaccinated_from_doses(doses_administered, interval, snoop_intervals
                     if vaccinated[j + interval] >= num_doses_undistributed:
                         vaccinated[j + interval] -= num_doses_undistributed
                         fully_vaccinated[j + interval] += num_doses_undistributed
+                        assert num_doses_undistributed >= 0
+                        assert fully_vaccinated[j + interval] >= 0
                         num_doses_undistributed = 0
                         break  # exit for loop
                     else:
                         distributed = vaccinated[j + interval]
-                        num_doses_undistributed = vaccinated[j] - distributed
+                        assert distributed >= 0
+                        num_doses_undistributed -= distributed
+                        assert num_doses_undistributed >= 0
                         fully_vaccinated[j + interval] += distributed  # vaccinated[j] - num_doses_undistributed
+                        assert fully_vaccinated[j + interval] >= 0
                         vaccinated[j + interval] = 0
 
             assert num_doses_undistributed == 0, f'Error dose distribution on day {i}, undistributed: {num_doses_undistributed}. Consider increasing snoop_intervals.'
