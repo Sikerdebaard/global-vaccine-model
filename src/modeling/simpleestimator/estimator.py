@@ -1,7 +1,7 @@
 import numpy as np
 
 
-def estimate_vaccinated_from_doses(doses_administered, interval, snoop_intervals=[-14, 14], cumulative_output=True):
+def estimate_vaccinated_from_doses(doses_administered, interval, snoop_intervals=[-14, 14], cumulative_output=True, population_size=99_999_999_999):
     if any([x < 0 for x in doses_administered]):
         raise ValueError(f'< 0  error: {doses_administered}')
 
