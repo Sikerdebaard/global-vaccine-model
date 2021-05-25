@@ -46,19 +46,19 @@ def model_to_chart(df_model, df_regionvals, chart_file_out_path, title, subtitle
 
     if plot_realworld:
         realworldcols = []
-        legend = ["Total doses administered", "Prediction fully vaccinated", "Prediction single dose vaccinated"]
+        legend = ["Total doses administered  (estimate)", "Prediction people fully vaccinated", "Prediction people started regimen"]
         if 'people_vaccinated' in df_regionvals.columns and df_regionvals['people_vaccinated'].sum() > 0:
             realworldcols.append('people_vaccinated')
             legend.append('people_vaccinated')
         if 'people_fully_vaccinated' in df_regionvals.columns  and df_regionvals['people_fully_vaccinated'].sum() > 0:
             realworldcols.append('people_fully_vaccinated')
-            legend.append('Real fully vaccinated')
+            legend.append('RIVM Fully vaccinated (estimate)')
 
         df_filter = df_filter.join(df_regionvals[realworldcols])
         cols = ['total_vaccinations', *use_cols, *realworldcols]
     else:
         cols = ['total_vaccinations', *use_cols]
-        legend = ["Total doses administered", "Fully vaccinated", "Single dose vaccinated"]
+        legend = ["Total doses administered", "Fully vaccinated", "Started regimen"]
 
     df_filter.index = df_filter.index.date
 
