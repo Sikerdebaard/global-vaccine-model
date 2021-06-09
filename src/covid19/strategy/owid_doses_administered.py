@@ -156,7 +156,8 @@ def strategy_estimated_doses_per_vaccine(alpha3, outdir, df_country=None, title=
             print(f'Single dose {vaccine}')
             vaccinated = df_doses_by_vaccine[vaccine_name]
             fully_vaccinated = df_doses_by_vaccine[vaccine_name]
-            started_regimen = df_doses_by_vaccine[vaccine_name]
+            #started_regimen = df_doses_by_vaccine[vaccine_name]
+            started_regimen = [0] * df_doses_by_vaccine[vaccine_name].shape[0]
 
             df_models['vaccinated', 'min', vaccine_name] = vaccinated
             df_models['fully_vaccinated', 'min', vaccine_name] = fully_vaccinated
