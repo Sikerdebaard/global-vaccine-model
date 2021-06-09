@@ -154,8 +154,8 @@ def strategy_estimated_doses_per_vaccine(alpha3, outdir, df_country=None, title=
 
         if len(vaccine) == 1 and is_vaccine_single_dose_regimen_for_country(vaccine_name):
             print(f'Single dose {vaccine}')
-            vaccinated = df_doses_by_vaccine[vaccine_name]
-            fully_vaccinated = df_doses_by_vaccine[vaccine_name]
+            vaccinated = df_doses_by_vaccine[vaccine_name].cumsum().values
+            fully_vaccinated = df_doses_by_vaccine[vaccine_name].cumsum().values
             #started_regimen = df_doses_by_vaccine[vaccine_name]
             started_regimen = [0] * df_doses_by_vaccine[vaccine_name].shape[0]
 
