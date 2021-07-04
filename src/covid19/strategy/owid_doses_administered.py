@@ -1,6 +1,6 @@
 from covid19.utils.owid import country_vaccines_in_use as owid_country_vaccines_in_use, owid_vaccine_to_vaccine_name, country_data, country_vaccine_startdates as owid_country_vaccine_startdates
 from covid19.utils.dose_regimen import minmax_dose_intervals_for_country, is_vaccine_single_dose_regimen_for_country
-from covid19.utils.country import country_startdate, country_doses_administered_by_vaccine, country_vaccine_startdate, first_second_dose_date, country_vaccines_in_use
+from covid19.utils.country import country_startdate, country_doses_administered_by_vaccine, country_vaccine_startdate, first_second_dose_date, country_vaccines_in_use, country_metadata
 from modeling.simpleestimator import estimate_vaccinated_from_doses
 from modeling.plotting.plotmodel import model_to_chart
 
@@ -12,6 +12,14 @@ from pathlib import Path
 
 def strategy_doses_per_vaccine(alpha3, outdir, df_country=None, df_doses_by_vaccine=None, title=None, subtitle=None):
     df_owid_country, vaccines_in_use, df_minmax_vaccine_intervals, df_country_raw = _countrydata(alpha3)
+
+    df_meta = country_metadata(alpha3)
+
+    print(df_meta)
+    if 'ignore_snoop' in df_meta.index:
+        ignore_snoop_vaccines = df_meta.at['ignore_snoop', 'value'].astype(str).split(':')
+    else:
+        ignore_snoop_vaccines = []
 
     if df_country is None:
         print('Using OWID country data')
@@ -28,14 +36,15 @@ def strategy_doses_per_vaccine(alpha3, outdir, df_country=None, df_doses_by_vacc
     df_minmax_vaccine_intervals.sort_index(inplace=True)
     df_minmax_vaccine_intervals = df_minmax_vaccine_intervals.resample('D').ffill().ffill().bfill().astype(int)
 
-    from pprint import pprint
-    pprint(df_minmax_vaccine_intervals)
+    #from pprint import pprint
+    #pprint(df_minmax_vaccine_intervals)
 
     second_dose_date = first_second_dose_date(alpha3=alpha3)
 
     df_models = pd.DataFrame(index=df_country.index)
     for vaccine in vaccines_in_use:
         vaccine_name = '/'.join(vaccine)
+
         if vaccine_name not in df_doses_by_vaccine.columns:
             # TODO: Throw warning here, skip this vaccine for now
             print('WARNING: vaccine not found', vaccine, df_doses_by_vaccine.columns)
@@ -60,19 +69,23 @@ def strategy_doses_per_vaccine(alpha3, outdir, df_country=None, df_doses_by_vacc
 
             intervals_min = list(df_minmax_vaccine_intervals[f'{vaccine_name}_min'].values)
             intervals_max = list(df_minmax_vaccine_intervals[f'{vaccine_name}_max'].values)
-            print(vaccine_name)
-            print(intervals_min)
-            print(intervals_max)
-            print('ASD')
+            # print(vaccine_name)
+            # print(intervals_min)
+            # print(intervals_max)
+            # print('ASD')
 
-            print(len(intervals_min), len(doses))
+            # print(len(intervals_min), len(doses))
 
-            vaccinated, fully_vaccinated, started_regimen, _ = estimate_vaccinated_from_doses(doses, interval=intervals_min, cumulative_output=True)
+            ignore_snoop_error = (vaccine_name in ignore_snoop_vaccines)
+            print('ignore_snoop_error', ignore_snoop_error)
+            print(vaccine_name, ignore_snoop_vaccines)
+
+            vaccinated, fully_vaccinated, started_regimen, _ = estimate_vaccinated_from_doses(doses, interval=intervals_min, cumulative_output=True, ignore_snoop_error=ignore_snoop_error)
             df_models['vaccinated', 'min', vaccine_name] = vaccinated
             df_models['fully_vaccinated', 'max', vaccine_name] = fully_vaccinated
             df_models['started_regimen', 'min', vaccine_name] = started_regimen
 
-            vaccinated, fully_vaccinated, started_regimen, _ = estimate_vaccinated_from_doses(doses, interval=intervals_max, cumulative_output=True)
+            vaccinated, fully_vaccinated, started_regimen, _ = estimate_vaccinated_from_doses(doses, interval=intervals_max, cumulative_output=True, ignore_snoop_error=ignore_snoop_error)
             df_models['vaccinated', 'max', vaccine_name] = vaccinated
             df_models['fully_vaccinated', 'min', vaccine_name] = fully_vaccinated
             df_models['started_regimen', 'max', vaccine_name] = started_regimen
