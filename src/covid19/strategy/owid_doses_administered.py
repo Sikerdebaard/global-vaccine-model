@@ -15,9 +15,8 @@ def strategy_doses_per_vaccine(alpha3, outdir, df_country=None, df_doses_by_vacc
 
     df_meta = country_metadata(alpha3)
 
-    print(df_meta)
     if 'ignore_snoop' in df_meta.index:
-        ignore_snoop_vaccines = df_meta.at['ignore_snoop', 'value'].astype(str).split(':')
+        ignore_snoop_vaccines = df_meta.at['ignore_snoop', 'value'].split(':')
     else:
         ignore_snoop_vaccines = []
 
