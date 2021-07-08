@@ -7,4 +7,4 @@ start_azd1222,2021-02-15,https://www.rivm.nl/covid-19-vaccinatie/cijfers-vaccina
 start_mrna-1273,2021-01-22,https://www.rijksoverheid.nl/onderwerpen/coronavirus-vaccinatie/soorten-coronavaccins/moderna
 start_comirnaty/azd1222,2021-01-06,https://www.rivm.nl/covid-19-vaccinatie/cijfers-vaccinatieprogramma
 start_mrna-1273/comirnaty,2021-01-25,https://www.rivm.nl/covid-19-vaccinatie/cijfers-vaccinatieprogramma
-ignore_snoop,azd1222
+ignore_snoop,azd1222,Turn off snooping interval errors as these sometimes cause errors when a vaccine is stopped / reaching its end
