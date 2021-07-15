@@ -142,6 +142,13 @@ def strategy_doses_per_vaccine(alpha3, outdir, df_country=None, df_doses_by_vacc
 def strategy_estimated_doses_per_vaccine(alpha3, outdir, df_country=None, title=None, subtitle=None):
     df_owid_country, vaccines_in_use, df_minmax_vaccine_intervals, df_country_raw = _countrydata(alpha3, df_country)
 
+    df_meta = country_metadata(alpha3)
+
+    if 'ignore_snoop' in df_meta.index:
+        ignore_snoop_vaccines = df_meta.at['ignore_snoop', 'value'].split(':')
+    else:
+        ignore_snoop_vaccines = []
+
     if df_country is None:
         print('Using OWID country data')
         df_country = df_owid_country
@@ -184,17 +191,17 @@ def strategy_estimated_doses_per_vaccine(alpha3, outdir, df_country=None, title=
 
             intervals_min = list(df_minmax_vaccine_intervals[f'{vaccine_name}_min'].values)
             intervals_max = list(df_minmax_vaccine_intervals[f'{vaccine_name}_max'].values)
-            print(vaccine_name)
-            print(intervals_min)
-            print(intervals_max)
-            print('ASD')
 
-            vaccinated, fully_vaccinated, started_regimen, _ = estimate_vaccinated_from_doses(doses, interval=intervals_min, cumulative_output=True)
+            ignore_snoop_error = (vaccine_name in ignore_snoop_vaccines)
+            print('ignore_snoop_error', ignore_snoop_error)
+            print(vaccine_name, ignore_snoop_vaccines)
+
+            vaccinated, fully_vaccinated, started_regimen, _ = estimate_vaccinated_from_doses(doses, interval=intervals_min, cumulative_output=True, ignore_snoop_error=ignore_snoop_error)
             df_models['vaccinated', 'min', vaccine_name] = vaccinated
             df_models['fully_vaccinated', 'max', vaccine_name] = fully_vaccinated
             df_models['started_regimen', 'min', vaccine_name] = started_regimen
 
-            vaccinated, fully_vaccinated, started_regimen, _ = estimate_vaccinated_from_doses(doses, interval=intervals_max, cumulative_output=True)
+            vaccinated, fully_vaccinated, started_regimen, _ = estimate_vaccinated_from_doses(doses, interval=intervals_max, cumulative_output=True, ignore_snoop_error=ignore_snoop_error)
             df_models['vaccinated', 'max', vaccine_name] = vaccinated
             df_models['fully_vaccinated', 'min', vaccine_name] = fully_vaccinated
             df_models['started_regimen', 'max', vaccine_name] = started_regimen
