@@ -208,7 +208,9 @@ def strategy_estimated_doses_per_vaccine(alpha3, outdir, df_country=None, title=
 
     df_models.columns = pd.MultiIndex.from_tuples(df_models.columns)
     vaccine_model_csv = outdir / f'{alpha3}-vaccines.csv'
-    df_models.round(0).astype(pd.Int64Dtype()).to_csv(vaccine_model_csv)
+    df_models_out = df_models.round(0).astype(pd.Int64Dtype())
+    df_models_out.columns = ['_'.join(x) for x in df_models_out.columns]
+    df_models_out.to_csv(vaccine_model_csv)
 
     df_aggregated = _sum_models_minmax(df_models)
     df_aggregated.astype(pd.Int64Dtype())
